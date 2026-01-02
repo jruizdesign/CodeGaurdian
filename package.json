@@ -1,0 +1,27 @@
+{
+  "name": "code-guardian---ai-security-scanner",
+  "version": "1.0.0",
+  "description": "AI POWERED SECURITY SCANNER",
+  "keywords": [
+    "code",
+    "gaurdian",
+    "ai",
+    "security",
+    "scanner"
+  ],
+  "homepage": "https://github.com/jruizdesign/CodeGaurdian#readme",
+  "bugs": {
+    "url": "https://github.com/jruizdesign/CodeGaurdian/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jruizdesign/CodeGaurdian.git"
+  },
+  "license": "MIT",
+  "author": "Jason Ruiz",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
