@@ -1,56 +1,61 @@
-
 import { useState } from 'react';
-import { GoogleGenAI, Type, GenerateContentResponse } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { SecurityAnalysis } from '../types.ts';
 import { fetchUrlContentCallable } from '../firebase.ts';
 
-const API_KEY = process.env.API_KEY;
+const API_KEY = import.meta.env.VITE_API_KEY;
 if (!API_KEY) {
-  console.error("API_KEY environment variable not set.");
+  console.warn("VITE_API_KEY environment variable not set.");
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY, vertexai: true });
-
-const responseSchema = {
-  type: Type.OBJECT,
-  properties: {
-    summary: {
-      type: Type.STRING,
-      description: "A brief one-sentence summary of the security findings.",
-    },
-    vulnerabilities: {
-      type: Type.ARRAY,
-      description: "A list of security vulnerabilities found in the code.",
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          type: {
-            type: Type.STRING,
-            description: "The type of vulnerability (e.g., XSS, SQL Injection).",
-          },
-          severity: {
-            type: Type.STRING,
-            description: "The severity of the vulnerability (Critical, High, Medium, Low, Informational).",
-          },
-          description: {
-            type: Type.STRING,
-            description: "A detailed explanation of the vulnerability.",
-          },
-          remediation: {
-            type: Type.STRING,
-            description: "Specific code examples or steps to fix the vulnerability.",
-          },
-          lineNumber: {
-            type: Type.INTEGER,
-            description: "The line number in the code where the vulnerability is located.",
+const genAI = new GoogleGenerativeAI(API_KEY || "YOUR_API_KEY");
+const model = genAI.getGenerativeModel({
+  model: "gemini-1.5-flash",
+  generationConfig: {
+    responseMimeType: "application/json",
+    responseSchema: {
+      type: "OBJECT" as any,
+      properties: {
+        summary: {
+          type: "STRING" as any,
+          description: "A brief one-sentence summary of the security findings.",
+        },
+        vulnerabilities: {
+          type: "ARRAY" as any,
+          description: "A list of security vulnerabilities found in the code.",
+          items: {
+            type: "OBJECT" as any,
+            properties: {
+              type: {
+                type: "STRING" as any,
+                description: "The type of vulnerability (e.g., XSS, SQL Injection).",
+              },
+              severity: {
+                type: "STRING" as any,
+                description: "The severity of the vulnerability (Critical, High, Medium, Low, Informational).",
+              },
+              description: {
+                type: "STRING" as any,
+                description: "A detailed explanation of the vulnerability.",
+              },
+              remediation: {
+                type: "STRING" as any,
+                description: "Specific code examples or steps to fix the vulnerability.",
+              },
+              lineNumber: {
+                type: "INTEGER" as any,
+                description: "The line number in the code where the vulnerability is located.",
+              },
+            },
+            required: ["type", "severity", "description", "remediation"],
           },
         },
-        required: ["type", "severity", "description", "remediation"],
       },
+      required: ["summary", "vulnerabilities"],
     },
-  },
-  required: ["summary", "vulnerabilities"],
-};
+    temperature: 0.1,
+  }
+});
 
 export const useSecurityScanner = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -61,15 +66,15 @@ export const useSecurityScanner = () => {
     setError(null);
 
     if (!API_KEY) {
-        setError("API key is not configured. Please set the API_KEY environment variable.");
-        setIsLoading(false);
-        return null;
+      setError("API key is not configured. Please set the VITE_API_KEY environment variable.");
+      setIsLoading(false);
+      return null;
     }
 
     if (!code.trim()) {
-        setError("Code input cannot be empty.");
-        setIsLoading(false);
-        return null;
+      setError("Code input cannot be empty.");
+      setIsLoading(false);
+      return null;
     }
 
     const prompt = `
@@ -95,22 +100,11 @@ export const useSecurityScanner = () => {
     `;
 
     try {
-      const response: GenerateContentResponse = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: {
-          role: 'user',
-          parts: [{ text: prompt }],
-        },
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: responseSchema,
-          temperature: 0.1,
-        },
-      });
-
-      const jsonText = response.text.trim();
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const jsonText = response.text();
       const analysisResult: SecurityAnalysis = JSON.parse(jsonText);
-      
+
       return analysisResult;
     } catch (e) {
       console.error("Error during security scan:", e);
@@ -127,37 +121,37 @@ export const useSecurityScanner = () => {
     setError(null);
 
     if (!API_KEY) {
-        setError("API key is not configured. Please set the API_KEY environment variable.");
-        setIsLoading(false);
-        return null;
+      setError("API key is not configured. Please set the VITE_API_KEY environment variable.");
+      setIsLoading(false);
+      return null;
     }
 
     if (!url.trim()) {
-        setError("URL input cannot be empty.");
-        setIsLoading(false);
-        return null;
+      setError("URL input cannot be empty.");
+      setIsLoading(false);
+      return null;
     }
 
     let validatedUrl;
     try {
-        validatedUrl = new URL(url);
+      validatedUrl = new URL(url);
     } catch (_) {
-        setError("Invalid URL provided. Please include http:// or https://");
-        setIsLoading(false);
-        return null;
+      setError("Invalid URL provided. Please include http:// or https://");
+      setIsLoading(false);
+      return null;
     }
 
     try {
-        // Call the Firebase Cloud Function to fetch the URL content
-        const result = await fetchUrlContentCallable({ url: validatedUrl.href });
-        const data = result.data as { html?: string; error?: string };
+      // Call the Firebase Cloud Function to fetch the URL content
+      const result = await fetchUrlContentCallable({ url: validatedUrl.href });
+      const data = result.data as { html?: string; error?: string };
 
-        if (data.error || !data.html) {
-            throw new Error(data.error || "Cloud function returned empty content.");
-        }
-        const htmlContent = data.html;
+      if (data.error || !data.html) {
+        throw new Error(data.error || "Cloud function returned empty content.");
+      }
+      const htmlContent = data.html;
 
-        const urlPrompt = `
+      const urlPrompt = `
             You are a world-class cybersecurity expert. Your task is to perform a thorough security audit of the provided website's source code (HTML, inline CSS, and inline JavaScript).
             Analyze it for any security vulnerabilities, including but not limited to the OWASP Top 10 (e.g., XSS from user inputs reflected in HTML, insecure 'src' attributes, insecure form handling, Content Security Policy issues, etc.), and other common web vulnerabilities.
 
@@ -177,28 +171,20 @@ export const useSecurityScanner = () => {
             If no vulnerabilities are found, provide a summary stating the code appears secure and leave the vulnerabilities array empty.
         `;
 
-        const geminiResponse: GenerateContentResponse = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: { role: 'user', parts: [{ text: urlPrompt }] },
-            config: {
-                responseMimeType: 'application/json',
-                responseSchema: responseSchema,
-                temperature: 0.1,
-            },
-        });
+      const geminiResponse = await model.generateContent(urlPrompt);
+      const response = await geminiResponse.response;
+      const jsonText = response.text();
+      const analysisResult: SecurityAnalysis = JSON.parse(jsonText);
 
-        const jsonText = geminiResponse.text.trim();
-        const analysisResult: SecurityAnalysis = JSON.parse(jsonText);
-        
-        return analysisResult;
+      return analysisResult;
 
     } catch (e) {
-        console.error("Error during URL scan:", e);
-        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred during the scan.";
-        setError(`Failed to analyze URL. This could be due to an invalid Firebase configuration, a network issue, or the target website blocking automated requests. Details: ${errorMessage}`);
-        return null;
+      console.error("Error during URL scan:", e);
+      const errorMessage = e instanceof Error ? e.message : "An unknown error occurred during the scan.";
+      setError(`Failed to analyze URL. This could be due to an invalid Firebase configuration, a network issue, or the target website blocking automated requests. Details: ${errorMessage}`);
+      return null;
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
