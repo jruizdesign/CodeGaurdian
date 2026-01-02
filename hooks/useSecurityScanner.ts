@@ -19,6 +19,7 @@ const model = genAI.getGenerativeModel({
         summary: {
           type: "STRING" as any,
           description: "A brief one-sentence summary of the security findings.",
+          properties: {}
         },
         vulnerabilities: {
           type: "ARRAY" as any,
