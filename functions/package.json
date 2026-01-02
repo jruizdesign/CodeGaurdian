@@ -1,4 +1,3 @@
-
 {
   "name": "functions",
   "description": "Cloud Functions for Code Guardian",
@@ -11,7 +10,7 @@
     "logs": "firebase functions:log"
   },
   "engines": {
-    "node": "18"
+    "node": "22"
   },
   "main": "lib/index.js",
   "dependencies": {
